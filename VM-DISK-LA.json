@@ -1,0 +1,72 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "scheduledqueryrules_iPSL_VoucherRetrieval_DISK_10_name": {
+            "defaultValue": "iPSL_VoucherRetrieval_DISK-10",
+            "type": "String"
+        },
+        "workspaces_log_ipsl_operational_mgmt_uks_001_externalid": {
+            "defaultValue": "/subscriptions/37753597-fdb6-4a83-aef3-05fa979ff57d/resourceGroups/rg-ipsl-logging-mgmt-uks-001/providers/microsoft.operationalinsights/workspaces/log-ipsl-operational-mgmt-uks-001",
+            "type": "String"
+        },
+        "actiongroups_test_ag_pj_externalid": {
+            "defaultValue": "/subscriptions/8194f84a-e1da-4ddc-af91-6687d8c6bd67/resourceGroups/rg-advisor-alerts/providers/microsoft.insights/actiongroups/test-ag-pj",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "microsoft.insights/scheduledqueryrules",
+            "apiVersion": "2021-08-01",
+            "name": "[parameters('scheduledqueryrules_iPSL_VoucherRetrieval_DISK_10_name')]",
+            "location": "uksouth",
+            "properties": {
+                "displayName": "[parameters('scheduledqueryrules_iPSL_VoucherRetrieval_DISK_10_name')]",
+                "description": "Less than 10% space available on a disk",
+                "severity": 3,
+                "enabled": true,
+                "evaluationFrequency": "PT10M",
+                "scopes": [
+                    "[parameters('workspaces_log_ipsl_operational_mgmt_uks_001_externalid')]"
+                ],
+                "targetResourceTypes": [
+                    "microsoft.operationalinsights/workspaces"
+                ],
+                "windowSize": "PT10M",
+                "criteria": {
+                    "allOf": [
+                        {
+                            "query": "let rg_name = \"rg-uks-lbg-prod-vr-001\"; // put you resource group name here\nlet resource_group = strcat(\"resourcegroups/\",rg_name);// build resourcegroup name\n// get disk percent first and store as variable\nPerf\n| where _ResourceId contains resource_group\n| where (ObjectName == \"Logical Disk\" or ObjectName == \"LogicalDisk\") and CounterName contains \"% Free Space\" and InstanceName != \"_Total\" and InstanceName != \"HarddiskVolume1\"\n",
+                            "timeAggregation": "Average",
+                            "metricMeasureColumn": "CounterValue",
+                            "dimensions": [
+                                {
+                                    "name": "InstanceName",
+                                    "operator": "Include",
+                                    "values": [
+                                        "*"
+                                    ]
+                                }
+                            ],
+                            "resourceIdColumn": "_ResourceId",
+                            "operator": "LessThan",
+                            "threshold": 90,
+                            "failingPeriods": {
+                                "numberOfEvaluationPeriods": 3,
+                                "minFailingPeriodsToAlert": 3
+                            }
+                        }
+                    ]
+                },
+                "autoMitigate": false,
+                "actions": {
+                    "actionGroups": [
+                        "[parameters('actiongroups_test_ag_pj_externalid')]"
+                    ]
+                }
+            }
+        }
+    ]
+}
